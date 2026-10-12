@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+html {
+  font-size: 20px;
+}
+
+body {
+  @apply bg-white text-slate-900;
+}
