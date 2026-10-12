@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.vercel/
+.DS_Store
+# Label images used for local prompt testing; not ours to publish
+test_images/
+test-photos/*
+!test-photos/README.md
