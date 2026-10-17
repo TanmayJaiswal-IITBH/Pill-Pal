@@ -34,7 +34,7 @@ describe('POST /api/scan', () => {
   it('rejects other methods', async () => {
     const res = await call('GET')
     expect(res.statusCode).toBe(405)
-    expect(res.body).toEqual({ ok: false, error: 'method_not_allowed' })
+    expect(res.body).toEqual({ ok: false, error: 'method_not_allowed', ai_key_configured: true })
   })
 
   it('rejects a missing or malformed image', async () => {

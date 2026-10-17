@@ -13,7 +13,8 @@ const DATA_URL = /^data:(image\/(?:jpeg|png|webp|heic|heif));base64,([A-Za-z0-9+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
-    res.status(405).json({ ok: false, error: 'method_not_allowed' })
+    // Opening /api/scan in a browser shows whether the server can see the key (never the key itself)
+    res.status(405).json({ ok: false, error: 'method_not_allowed', ai_key_configured: Boolean(process.env.AI_API_KEY) })
     return
   }
 
