@@ -1,7 +1,7 @@
 // Sends the photo to /api/scan. Always resolves to { ok: true, data } or { ok: false, error }.
 
-// The server gives the AI 9 seconds; allow for upload time on a slow connection
-const CLIENT_TIMEOUT_MS = 20000
+// The server gives the AI 25 seconds; allow for upload time on a slow connection
+const CLIENT_TIMEOUT_MS = 40000
 
 // Errors that mean "the photo was the problem": show the retake screen
 const RETAKE_ERRORS = ['low_confidence', 'missing_fields', 'bad_json', 'bad_image', 'missing_image', 'image_too_large']

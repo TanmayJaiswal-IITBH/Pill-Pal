@@ -69,7 +69,7 @@ describe('scanLabel', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
-  it('gives up after 9 seconds', async () => {
+  it('gives up at the timeout', async () => {
     const { result } = await run(reply(60000, 200), reply(60000, 200))
     expect(result).toMatchObject({ ok: false, error: 'ai_unavailable', detail: 'timeout' })
   })

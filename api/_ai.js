@@ -8,13 +8,14 @@ import { buildPrompt, parseScanResult } from './_prompt.js'
 export const MODEL = 'gemma-4-26b-a4b-it'
 
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
-export const TIMEOUT_MS = 9000
+// Real phone photos can take longer than the test set, and the API sometimes stalls for 10+ seconds
+export const TIMEOUT_MS = 25000
 // The API sometimes fails fast with a 500; retry while there is still time
 const MAX_ATTEMPTS = 4
 const MIN_TIME_FOR_RETRY_MS = 4000
 // Most answers take about 4 seconds, but now and then one request stalls past the timeout.
 // If there is no answer by then, send a second copy and use whichever answers first.
-const HEDGE_AFTER_MS = 5000
+const HEDGE_AFTER_MS = 8000
 
 async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) {
   const res = await fetch(ENDPOINT, {
