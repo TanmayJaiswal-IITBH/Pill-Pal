@@ -10,8 +10,11 @@ export const MODEL = 'gemma-4-26b-a4b-it'
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
 export const TIMEOUT_MS = 9000
 // The API sometimes fails fast with a 500; retry while there is still time
-const MAX_ATTEMPTS = 3
+const MAX_ATTEMPTS = 4
 const MIN_TIME_FOR_RETRY_MS = 4000
+// Most answers take about 4 seconds, but now and then one request stalls past the timeout.
+// If there is no answer by then, send a second copy and use whichever answers first.
+const HEDGE_AFTER_MS = 5000
 
 async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) {
   const res = await fetch(ENDPOINT, {
@@ -39,25 +42,52 @@ async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) 
 
 // Returns { ok: true, data } or { ok: false, error }, plus attempts, the raw reply and a failure detail for logs. Never throws.
 export async function scanLabel({ imageBase64, mimeType, language, apiKey, timeoutMs = TIMEOUT_MS }) {
-  const started = Date.now()
+  const deadline = Date.now() + timeoutMs
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const { signal } = controller
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
   let attempts = 0
-  try {
-    while (true) {
+  let lastDetail
+
+  function wait(ms) {
+    return new Promise((resolve) => {
+      const id = setTimeout(resolve, ms)
+      signal.addEventListener('abort', () => {
+        clearTimeout(id)
+        resolve()
+      })
+    })
+  }
+
+  // One line of requests: retries fast 500s until it gets an answer or runs out of time
+  async function lane(delayMs) {
+    if (delayMs) await wait(delayMs)
+    while (!signal.aborted && attempts < MAX_ATTEMPTS) {
       attempts++
-      const reply = await requestOnce({ imageBase64, mimeType, language, apiKey, signal: controller.signal })
-      if (reply.text !== undefined) return { ...parseScanResult(reply.text), attempts, raw: reply.text }
-      const timeLeft = timeoutMs - (Date.now() - started)
-      if (reply.status < 500 || attempts >= MAX_ATTEMPTS || timeLeft < MIN_TIME_FOR_RETRY_MS) {
-        return { ok: false, error: 'ai_unavailable', attempts, detail: `HTTP ${reply.status}` }
-      }
+      const reply = await requestOnce({ imageBase64, mimeType, language, apiKey, signal })
+      if (reply.text !== undefined) return reply.text
+      lastDetail = `HTTP ${reply.status}`
+      // A 4xx (bad key, bad request) will not fix itself: stop both lanes
+      if (reply.status < 500) controller.abort()
+      if (deadline - Date.now() < MIN_TIME_FOR_RETRY_MS) break
     }
-  } catch (err) {
-    // Timeout (abort), network failure or an unreadable response body
-    const detail = err.name === 'AbortError' ? 'timeout' : err.name
+    throw new Error(lastDetail)
+  }
+
+  try {
+    const text = await Promise.any([lane(0), lane(HEDGE_AFTER_MS)])
+    return { ...parseScanResult(text), attempts, raw: text }
+  } catch {
+    // Timeout, network failure, unreadable response body, or the API kept failing
+    const detail = timedOut ? 'timeout' : (lastDetail ?? 'network error')
     return { ok: false, error: 'ai_unavailable', attempts, detail }
   } finally {
     clearTimeout(timer)
+    // Cancel the slower copy, if any
+    controller.abort()
   }
 }
