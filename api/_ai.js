@@ -3,9 +3,11 @@
 
 import { buildPrompt, parseScanResult } from './_prompt.js'
 
-// Gemma 4 26B A4B: reads images and answers in about 4 seconds with minimal thinking.
-// Gemma 4 31B gave similar answers but took 25 to 85 seconds, too slow for a phone.
-export const MODEL = 'gemma-4-26b-a4b-it'
+// Gemini 3.5 Flash Lite, chosen on 17 Oct 2026 from a test of 10 label photos:
+// all 10 answered in under 2.5 seconds, all 8 sharp labels read correctly, and both blurry
+// photos rated low confidence. Gemma 4 26B had slowed to a 13 second median, Gemini 3.8 Flash
+// took about 6 seconds, and Gemini 3.1 Flash Lite guessed a strength on a blurry photo.
+export const MODEL = 'gemini-3.5-flash-lite'
 
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`
 // Real phone photos can take longer than the test set, and the API sometimes stalls for 10+ seconds
@@ -13,9 +15,9 @@ export const TIMEOUT_MS = 25000
 // The API sometimes fails fast with a 500; retry while there is still time
 const MAX_ATTEMPTS = 4
 const MIN_TIME_FOR_RETRY_MS = 4000
-// Most answers take about 4 seconds, but now and then one request stalls past the timeout.
+// Most answers take about 2 seconds, but now and then one request stalls.
 // If there is no answer by then, send a second copy and use whichever answers first.
-const HEDGE_AFTER_MS = 8000
+const HEDGE_AFTER_MS = 4000
 
 async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) {
   const res = await fetch(ENDPOINT, {

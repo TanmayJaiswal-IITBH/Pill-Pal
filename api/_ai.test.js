@@ -53,7 +53,7 @@ describe('scanLabel', () => {
   })
 
   it('retries a fast 500', async () => {
-    const { result } = await run(reply(1500, 500), reply(3000, 200))
+    const { result } = await run(reply(1500, 500), reply(2000, 200))
     expect(result).toMatchObject({ ok: true, attempts: 2 })
   })
 
