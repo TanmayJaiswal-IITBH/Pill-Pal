@@ -10,6 +10,7 @@ export default {
 
   strength: 'Strength',
   purpose: 'What it is for',
+  purposeSource: 'Source: {site}',
   howToTake: 'How to take it',
   warnings: 'Warnings',
   replay: 'Replay',

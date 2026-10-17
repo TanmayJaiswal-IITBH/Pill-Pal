@@ -9,7 +9,9 @@ function localApi() {
     name: 'pillpal-local-api',
     apply: 'serve',
     configureServer(server) {
-      process.env.AI_API_KEY ??= loadEnv('development', process.cwd(), '').AI_API_KEY
+      const env = loadEnv('development', process.cwd(), '')
+      process.env.AI_API_KEY ??= env.AI_API_KEY
+      if (env.TAVILY_API_KEY) process.env.TAVILY_API_KEY ??= env.TAVILY_API_KEY
       server.middlewares.use('/api/scan', async (req, res) => {
         const chunks = []
         for await (const chunk of req) chunks.push(chunk)

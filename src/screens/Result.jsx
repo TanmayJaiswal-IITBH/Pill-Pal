@@ -33,6 +33,9 @@ export default function Result({ lang, data, onScanAnother, onWrongMedicine }) {
       {data.purpose && (
         <Section title={t(lang, 'purpose')}>
           <p>{data.purpose}</p>
+          {data.purpose_source && (
+            <p className="text-slate-700">{t(lang, 'purposeSource', { site: data.purpose_source })}</p>
+          )}
         </Section>
       )}
       <Section title={t(lang, 'howToTake')}>

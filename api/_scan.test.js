@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./_ai.js', () => ({ scanLabel: vi.fn() }))
+vi.mock('./_purpose.js', () => ({ lookUpPurpose: vi.fn() }))
 const { scanLabel } = await import('./_ai.js')
+const { lookUpPurpose } = await import('./_purpose.js')
 const { default: handler, MAX_IMAGE_BYTES } = await import('./scan.js')
 
 function call(method, body) {
@@ -27,7 +29,9 @@ const image = 'data:image/jpeg;base64,' + Buffer.from('fake photo').toString('ba
 
 beforeEach(() => {
   process.env.AI_API_KEY = 'test-key'
+  delete process.env.TAVILY_API_KEY
   scanLabel.mockReset()
+  lookUpPurpose.mockReset()
 })
 
 describe('POST /api/scan', () => {
@@ -80,5 +84,30 @@ describe('POST /api/scan', () => {
     const res = await call('POST', { image })
     expect(res.body).toEqual({ ok: false, error: 'ai_unavailable', detail: 'no_api_key' })
     expect(scanLabel).not.toHaveBeenCalled()
+  })
+
+  it('fills in the purpose from trusted sites when Tavily is set up', async () => {
+    process.env.TAVILY_API_KEY = 'tvly-test'
+    scanLabel.mockResolvedValue({ ok: true, data: { name: 'Pioglitazone', purpose: 'Not stated' }, attempts: 1 })
+    lookUpPurpose.mockResolvedValue({ purpose: 'It helps control blood sugar.', source: 'medlineplus.gov' })
+    const res = await call('POST', { image })
+    expect(res.body.data).toEqual({
+      name: 'Pioglitazone',
+      purpose: 'It helps control blood sugar.',
+      purpose_source: 'medlineplus.gov',
+    })
+    expect(lookUpPurpose).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Pioglitazone', language: 'English', tavilyKey: 'tvly-test' }),
+    )
+  })
+
+  it('keeps the label purpose when search is off or finds nothing', async () => {
+    scanLabel.mockResolvedValue({ ok: true, data: { name: 'Pioglitazone', purpose: 'For diabetes' }, attempts: 1 })
+    expect((await call('POST', { image })).body.data.purpose).toBe('For diabetes')
+    expect(lookUpPurpose).not.toHaveBeenCalled()
+
+    process.env.TAVILY_API_KEY = 'tvly-test'
+    lookUpPurpose.mockResolvedValue(null)
+    expect((await call('POST', { image })).body.data).toEqual({ name: 'Pioglitazone', purpose: 'For diabetes' })
   })
 })

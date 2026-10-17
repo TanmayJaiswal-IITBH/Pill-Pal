@@ -2,6 +2,7 @@
 // Returns { ok: true, data } or { ok: false, error }. The photo is never stored or logged.
 
 import { scanLabel } from './_ai.js'
+import { lookUpPurpose } from './_purpose.js'
 
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
@@ -45,6 +46,15 @@ export default async function handler(req, res) {
   const language = LANGUAGE_NAMES[req.body.language] ?? LANGUAGE_NAMES.en
   const { attempts, raw, detail, ...result } = await scanLabel({ imageBase64, mimeType, language, apiKey })
   if (!result.ok) console.warn(`scan failed: ${result.error} ${detail ?? ''} after ${attempts} attempt(s)`)
+
+  // Optional: replace the model's own idea of what the medicine is for with one from trusted sites.
+  // If search is off, slow or unsure, the model's answer stays.
+  const tavilyKey = process.env.TAVILY_API_KEY
+  if (result.ok && tavilyKey) {
+    const found = await lookUpPurpose({ name: result.data.name, language, tavilyKey, aiKey: apiKey })
+    if (found) result.data = { ...result.data, purpose: found.purpose, purpose_source: found.source }
+  }
+
   // Unreadable labels are a normal answer (200); only an AI outage is a server-side failure.
   // The outage detail (e.g. "timeout", "HTTP 403") is shown small on the error screen to help diagnose it.
   if (result.error === 'ai_unavailable') res.status(502).json({ ...result, detail })

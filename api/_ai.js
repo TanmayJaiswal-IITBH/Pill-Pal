@@ -19,19 +19,13 @@ const MIN_TIME_FOR_RETRY_MS = 4000
 // If there is no answer by then, send a second copy and use whichever answers first.
 const HEDGE_AFTER_MS = 4000
 
-async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) {
+// One call to the model. Returns { status, text } where text is undefined if the call failed.
+export async function generate(parts, apiKey, signal) {
   const res = await fetch(ENDPOINT, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: buildPrompt(language) },
-            { inline_data: { mime_type: mimeType, data: imageBase64 } },
-          ],
-        },
-      ],
+      contents: [{ parts }],
       generationConfig: { thinkingConfig: { thinkingLevel: 'minimal' } },
     }),
     signal,
@@ -39,8 +33,16 @@ async function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) 
   if (!res.ok) return { status: res.status }
   const json = await res.json()
   // Skip any "thinking" parts and keep only the answer text
-  const parts = json.candidates?.[0]?.content?.parts ?? []
-  return { status: res.status, text: parts.filter((p) => !p.thought).map((p) => p.text ?? '').join('') }
+  const answer = json.candidates?.[0]?.content?.parts ?? []
+  return { status: res.status, text: answer.filter((p) => !p.thought).map((p) => p.text ?? '').join('') }
+}
+
+function requestOnce({ imageBase64, mimeType, language, apiKey, signal }) {
+  return generate(
+    [{ text: buildPrompt(language) }, { inline_data: { mime_type: mimeType, data: imageBase64 } }],
+    apiKey,
+    signal,
+  )
 }
 
 // Returns { ok: true, data } or { ok: false, error }, plus attempts, the raw reply and a failure detail for logs. Never throws.
