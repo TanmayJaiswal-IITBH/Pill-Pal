@@ -35,6 +35,7 @@ export default {
   errorTitle: 'Something went wrong.',
   errorHelp: "We couldn't reach the medicine reader. Check your internet connection and try again.",
   tryAgain: 'Try again',
+  errorCode: 'Error code: {code}',
   backToStart: 'Back to start',
 
   wrongMedicine: 'Took the wrong medicine?',

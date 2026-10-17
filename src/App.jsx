@@ -25,6 +25,7 @@ export default function App() {
   const [lang, setLang] = useState(() => loadLanguage())
   const [screen, setScreen] = useState(() => (lang ? 'home' : 'language'))
   const [result, setResult] = useState(null)
+  const [errorCode, setErrorCode] = useState('')
   // Kept in memory only, so "Try again" can resend it after a network or AI failure
   const [photo, setPhoto] = useState(null)
 
@@ -59,6 +60,7 @@ export default function App() {
       setPhoto(null)
       setScreen('retake')
     } else {
+      setErrorCode([response.error, response.detail].filter(Boolean).join(' '))
       setScreen('error')
     }
   }
@@ -108,7 +110,7 @@ export default function App() {
     case 'retake':
       return <Retake lang={current} onPhoto={handlePhoto} onBack={goHome} />
     case 'error':
-      return <ErrorScreen lang={current} onRetry={retry} onBack={goHome} />
+      return <ErrorScreen lang={current} code={errorCode} onRetry={retry} onBack={goHome} />
     default:
       return <Home lang={current} onPhoto={handlePhoto} onChangeLanguage={() => setScreen('language')} />
   }

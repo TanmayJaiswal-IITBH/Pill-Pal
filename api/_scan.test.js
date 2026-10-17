@@ -69,16 +69,16 @@ describe('POST /api/scan', () => {
   })
 
   it('reports an AI outage as ai_unavailable', async () => {
-    scanLabel.mockResolvedValue({ ok: false, error: 'ai_unavailable', attempts: 2 })
+    scanLabel.mockResolvedValue({ ok: false, error: 'ai_unavailable', attempts: 2, detail: 'timeout' })
     const res = await call('POST', { image })
     expect(res.statusCode).toBe(502)
-    expect(res.body).toEqual({ ok: false, error: 'ai_unavailable' })
+    expect(res.body).toEqual({ ok: false, error: 'ai_unavailable', detail: 'timeout' })
   })
 
   it('reports a missing API key as ai_unavailable', async () => {
     delete process.env.AI_API_KEY
     const res = await call('POST', { image })
-    expect(res.body).toEqual({ ok: false, error: 'ai_unavailable' })
+    expect(res.body).toEqual({ ok: false, error: 'ai_unavailable', detail: 'no_api_key' })
     expect(scanLabel).not.toHaveBeenCalled()
   })
 })

@@ -38,13 +38,15 @@ export default async function handler(req, res) {
   const apiKey = process.env.AI_API_KEY
   if (!apiKey) {
     console.error('AI_API_KEY is not set')
-    res.status(503).json({ ok: false, error: 'ai_unavailable' })
+    res.status(503).json({ ok: false, error: 'ai_unavailable', detail: 'no_api_key' })
     return
   }
 
   const language = LANGUAGE_NAMES[req.body.language] ?? LANGUAGE_NAMES.en
   const { attempts, raw, detail, ...result } = await scanLabel({ imageBase64, mimeType, language, apiKey })
   if (!result.ok) console.warn(`scan failed: ${result.error} ${detail ?? ''} after ${attempts} attempt(s)`)
-  // Unreadable labels are a normal answer (200); only an AI outage is a server-side failure
-  res.status(result.error === 'ai_unavailable' ? 502 : 200).json(result)
+  // Unreadable labels are a normal answer (200); only an AI outage is a server-side failure.
+  // The outage detail (e.g. "timeout", "HTTP 403") is shown small on the error screen to help diagnose it.
+  if (result.error === 'ai_unavailable') res.status(502).json({ ...result, detail })
+  else res.status(200).json(result)
 }

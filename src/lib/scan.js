@@ -22,9 +22,10 @@ export async function scanPhoto(image, language) {
     })
     const body = await res.json().catch(() => null)
     if (body && typeof body.ok === 'boolean') return body
-    return { ok: false, error: res.status === 413 ? 'image_too_large' : 'ai_unavailable' }
-  } catch {
-    return { ok: false, error: 'network' }
+    if (res.status === 413) return { ok: false, error: 'image_too_large' }
+    return { ok: false, error: 'ai_unavailable', detail: `HTTP ${res.status}` }
+  } catch (err) {
+    return { ok: false, error: 'network', detail: err.name === 'AbortError' ? 'no reply in time' : 'offline' }
   } finally {
     clearTimeout(timer)
   }
